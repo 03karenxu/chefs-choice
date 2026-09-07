@@ -1,0 +1,7 @@
+[i-hungry]
+name = "backend"
+version = "0.1.0"
+description = "application plotting restaurants by how good/cheap they are"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
