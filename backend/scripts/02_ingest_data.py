@@ -2,14 +2,12 @@
 # ingests restaurant data from .csv file into psql database
 #
 
-import os
 import logging
 import psycopg2
 from pathlib import Path
-from dotenv import load_dotenv
-from app.config import DATA_DIR, SCRIPTS_DIR
-
-load_dotenv()
+from app.db import engine, Base
+from app.models import Restaurant
+from app.config import DATA_DIR, SCRIPTS_DIR, DB_URL
 
 logging.basicConfig(
     filename=SCRIPTS_DIR / "logs" / "ingest_data.log",
@@ -19,46 +17,16 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-
-DB_NAME = os.environ["DB_NAME"]
-PG_USER = os.environ["PG_USER"]
 TABLE_NAME = "restaurants"
 
-
-def init_db():
-    """
-    initializes the table in the specified database
-    """
-    conn = psycopg2.connect(dbname=DB_NAME, user=PG_USER)
-    cur = conn.cursor()
-
+def init_tables():
     try:
-        cur.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {TABLE_NAME}
-            (
-                id VARCHAR(100) PRIMARY KEY,
-                name VARCHAR(200) NOT NULL,
-                type VARCHAR(50),
-                address VARCHAR(200),
-                lat FLOAT,
-                lng FLOAT,
-                priceLevel VARCHAR(50),
-                priceRange VARCHAR(20),
-                rating FLOAT,
-                userRatingCount INTEGER
-            );
-            """
-        )
-        conn.commit()
-        logger.info(f"Created table {TABLE_NAME}")
+        Base.metadata.create_all(engine)
+        logger.info("Tables created successfully")
     except Exception as e:
-        logger.error(f"Could not create table {TABLE_NAME}: {e}")
-        conn.rollback()
+        logger.error(f"Could not create tables: {e}")
         raise e
-    finally:
-        cur.close()
-        conn.close()
+    
 
 def load_from_csv(fp: Path | str):
     """
@@ -68,7 +36,7 @@ def load_from_csv(fp: Path | str):
 
     if not fp.exists(): raise FileNotFoundError()
     
-    conn = psycopg2.connect(dbname=DB_NAME, user=PG_USER)
+    conn = engine.raw_connection()
     cur = conn.cursor()
 
     try:
@@ -86,6 +54,6 @@ def load_from_csv(fp: Path | str):
 
 
 if __name__ == "__main__":
-    init_db()
+    init_tables()
     load_from_csv(DATA_DIR / "ALL_RESTAURANTS.csv")
     logger.info(f"All done!")
