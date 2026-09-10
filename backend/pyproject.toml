@@ -1,7 +1,14 @@
-[i-hungry]
-name = "backend"
+[project]
+name = "i-hungry-backend"
 version = "0.1.0"
 description = "application plotting restaurants by how good/cheap they are"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "folium>=0.20.0",
+    "psycopg2-binary>=2.9.12",
+    "pydantic>=2.13.5",
+    "python-dotenv>=1.2.3",
+    "requests>=2.34.2",
+    "tqdm>=4.70.0",
+]
