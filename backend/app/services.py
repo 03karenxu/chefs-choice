@@ -1,6 +1,6 @@
 from enum import Enum
+from sqlalchemy import asc, desc, func, select
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func
 from app.models import Restaurant, PriceLevel
 from sqlalchemy import asc, desc
 
@@ -84,7 +84,7 @@ def get_restaurants_by_price_level(
     return db.scalars(
         select(Restaurant)
         .where(Restaurant.priceLevel == price_level)
-        .order_by(direction(column))
+        .order_by(direction(column).nulls_last())
     ).all()
 
 
