@@ -1,0 +1,132 @@
+from decimal import Decimal
+from sqlalchemy.orm import Session
+from sqlalchemy import asc, desc, func, select, Row
+from app.models import Restaurant, PriceLevel
+from app.enums import SortField, SortOrder, BestValueMethod
+
+FIELD2COL = {
+    SortField.RATING:   Restaurant.rating,
+    SortField.PRICE:    Restaurant.priceLevel,
+    SortField.NAME:     Restaurant.name,
+}
+
+ORDER2FUNC = {
+    SortOrder.ASC:  asc,
+    SortOrder.DESC: desc
+}
+
+# ------------------------------------------------------------------------------
+
+def get_restaurants(
+    db: Session,
+    sort_by: SortField,
+    order: SortOrder,
+    type: str | None,
+    priceLevel: PriceLevel | None
+) -> list[Restaurant]:
+    """
+    returns all restaurants, with optional type/priceLevel filtering
+    """
+    column = FIELD2COL[sort_by]
+    direction = ORDER2FUNC[order]
+
+    stmt = select(Restaurant)
+    if type is not None:
+        stmt = stmt.where(Restaurant.type == type)
+    if priceLevel is not None:
+        stmt = stmt.where(Restaurant.priceLevel == priceLevel)
+
+    return db.scalars(
+        stmt
+        .order_by(direction(column).nulls_last())
+    ).all()
+
+
+def get_restaurant_by_id(id: str, db: Session) -> Restaurant | None:
+    """
+    gets single restaurant by restaurant id, returns none if not found
+    """
+    return db.scalars(
+        select(Restaurant).where(Restaurant.id == id)
+    ).one_or_none()
+
+
+def get_distinct_types(db: Session) -> list[str]:
+    """
+    gets distinct restaurant types ordered by how common they are
+    """
+    return db.scalars(
+        select(Restaurant.type)
+        .where(Restaurant.type.is_not(None))
+        .group_by(Restaurant.type)
+        .order_by(func.count(Restaurant.id).desc())
+    ).all()
+
+
+def get_best_value_restaurants(
+    db: Session,
+    method: BestValueMethod,
+    limit: int
+) -> list[Restaurant]:
+    """
+    returns the restaurants table using 2 options, up to limit
+    1. ordered by bayesian average rating
+    2. ordered by average rating
+    """
+    has_data = (
+        Restaurant.rating.is_not(None),
+        Restaurant.userRatingCount.is_not(None)
+    )
+
+    if method == BestValueMethod.BAYESIAN:
+        results = db.scalars(
+            select(Restaurant)
+            .where(*has_data)
+            .order_by(Restaurant.bayesianRating.desc().nulls_last())
+            .limit(limit)
+    ).all()
+    elif method == BestValueMethod.RATING:
+        results = db.scalars(
+            select(Restaurant)
+            .where(*has_data)
+            .order_by(Restaurant.rating.desc().nulls_last())
+            .limit(limit)
+        ).all()
+    else:
+        results = []
+    return results
+
+
+def get_type_stats(db: Session) -> list[Row]:
+    """
+    gets avg rating and number of restaurants for each restaurant type
+    """
+    return db.execute(
+        select(
+            Restaurant.type.label("type"),
+            func.avg(Restaurant.rating).label("avg_rating"),
+            func.count(Restaurant.id).label("count")
+        )
+        .where(Restaurant.type.is_not(None))
+        .group_by(Restaurant.type)
+        .order_by(func.count(Restaurant.id).desc())
+    ).all()
+
+def compute_bayesian_ratings(db: Session) -> None:
+    has_data = (
+        Restaurant.rating.is_not(None),
+        Restaurant.userRatingCount.is_not(None),
+    )
+
+    m = db.scalar(select(func.avg(Restaurant.rating)).where(*has_data))
+    C = db.scalar(select(func.avg(Restaurant.userRatingCount)).where(*has_data))
+
+    if m is None or C is None:
+        return
+    
+    restaurants = db.scalars(select(Restaurant).where(*has_data)).all()
+    for r in restaurants:
+        v, R = r.userRatingCount, r.rating
+        r.bayesianRating = (Decimal(C) * m + v * R) / (v + Decimal(C))
+
+    db.commit()
