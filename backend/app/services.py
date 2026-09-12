@@ -1,16 +1,7 @@
-from enum import Enum
 from sqlalchemy.orm import Session
-from sqlalchemy import asc, desc, func, select
+from sqlalchemy import asc, desc, func, select, Row
 from app.models import Restaurant, PriceLevel
-
-class SortOrder(str, Enum):
-    ASC     = "asc"
-    DESC    = "desc"
-
-class SortField(str, Enum):
-    RATING  = "rating"
-    PRICE   = "price"
-    NAME    = "name"
+from app.enums import SortField, SortOrder
 
 FIELD2COL = {
     SortField.RATING:   Restaurant.rating,
@@ -27,10 +18,10 @@ ORDER2FUNC = {
 
 def get_restaurants(
     db: Session,
+    sort_by: SortField,
+    order: SortOrder,
     type: str | None                = None,
-    priceLevel: PriceLevel | None   = None,
-    sort_by: SortField              = SortField.RATING,
-    order: SortOrder                = SortOrder.DESC
+    priceLevel: PriceLevel | None   = None
 ) -> list[Restaurant]:
     """
     returns all restaurants, with optional type/priceLevel filtering
@@ -114,15 +105,15 @@ def get_best_value_restaurants(
     return results_bayesian, results_avg
 
 
-def get_stats_by_type(db: Session):
+def get_type_stats(db: Session) -> list[Row]:
     """
     gets avg rating and number of restaurants for each restaurant type
     """
     return db.execute(
         select(
-            Restaurant.type,
-            func.avg(Restaurant.rating),
-            func.count(Restaurant.id)
+            Restaurant.type.label("type"),
+            func.avg(Restaurant.rating).label("avg_rating"),
+            func.count(Restaurant.id).label("count")
         )
         .where(Restaurant.type.is_not(None))
         .group_by(Restaurant.type)

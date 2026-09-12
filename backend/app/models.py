@@ -1,15 +1,9 @@
-from enum import Enum
 from decimal import Decimal
 from app.db import Base
+from app.enums import PriceLevel
 from sqlalchemy import Float, String, Numeric, Integer, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
-
-class PriceLevel(str, Enum):
-    INEXPENSIVE     = "INEXPENSIVE"
-    MODERATE        = "MODERATE"
-    EXPENSIVE       = "EXPENSIVE"
-    VERY_EXPENSIVE  = "VERY_EXPENSIVE"
 
 
 class Restaurant(Base):
