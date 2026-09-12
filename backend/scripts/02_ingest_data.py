@@ -41,7 +41,7 @@ def load_from_csv(fp: Path | str):
 
     try:
         with open(fp, "r") as f:
-            cur.copy_expert(f"COPY {TABLE_NAME} FROM STDIN WITH CSV HEADER", f)
+            cur.copy_expert(f"COPY {TABLE_NAME} FROM STDIN WITH CSV HEADER NULL ''", f)
         conn.commit()
         logger.info(f"Loaded {fp.name} into table {TABLE_NAME}")
     except Exception as e:

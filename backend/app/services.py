@@ -1,44 +1,51 @@
 from enum import Enum
-from sqlalchemy import asc, desc, func, select
 from sqlalchemy.orm import Session
+from sqlalchemy import asc, desc, func, select
 from app.models import Restaurant, PriceLevel
-from sqlalchemy import asc, desc
 
 class SortOrder(str, Enum):
-    ASC = "asc"
-    DESC = "desc"
+    ASC     = "asc"
+    DESC    = "desc"
 
 class SortField(str, Enum):
-    RATING = "rating"
-    PRICE = "price"
-    NAME = "name"
+    RATING  = "rating"
+    PRICE   = "price"
+    NAME    = "name"
 
 FIELD2COL = {
-    SortField.RATING: Restaurant.rating,
-    SortField.PRICE: Restaurant.priceLevel,
-    SortField.NAME: Restaurant.name,
+    SortField.RATING:   Restaurant.rating,
+    SortField.PRICE:    Restaurant.priceLevel,
+    SortField.NAME:     Restaurant.name,
 }
 
 ORDER2FUNC = {
-    SortOrder.ASC: asc,
+    SortOrder.ASC:  asc,
     SortOrder.DESC: desc
 }
 
 # ------------------------------------------------------------------------------
 
-def get_all_restaurants(
+def get_restaurants(
     db: Session,
-    sort_by: SortField = SortField.RATING,
-    order: SortOrder = SortOrder.DESC
+    type: str | None                = None,
+    priceLevel: PriceLevel | None   = None,
+    sort_by: SortField              = SortField.RATING,
+    order: SortOrder                = SortOrder.DESC
 ) -> list[Restaurant]:
     """
-    returns all restaurants
+    returns all restaurants, with optional type/priceLevel filtering
     """
     column = FIELD2COL[sort_by]
     direction = ORDER2FUNC[order]
 
+    stmt = select(Restaurant)
+    if type is not None:
+        stmt = stmt.where(Restaurant.type == type)
+    if priceLevel is not None:
+        stmt = stmt.where(Restaurant.priceLevel == priceLevel)
+
     return db.scalars(
-        select(Restaurant)
+        stmt
         .order_by(direction(column).nulls_last())
     ).all()
 
@@ -50,42 +57,6 @@ def get_restaurant_by_id(id: str, db: Session) -> Restaurant | None:
     return db.scalars(
         select(Restaurant).where(Restaurant.id == id)
     ).one_or_none()
-
-
-def get_restaurants_by_type(
-    type: str,
-    db: Session,
-    sort_by: SortField = SortField.RATING,
-    order: SortOrder = SortOrder.DESC
-) -> list[Restaurant]:
-    """
-    returns all restaurant records of the specified type
-    """
-    column = FIELD2COL[sort_by]
-    direction = ORDER2FUNC[order]
-
-    return db.scalars(
-        select(Restaurant)
-        .where(Restaurant.type == type)
-        .order_by(direction(column).nulls_last())
-    ).all()
-
-def get_restaurants_by_price_level(
-    price_level: PriceLevel,
-    db: Session,
-    sort_by: SortField = SortField.RATING,
-    order: SortOrder = SortOrder.DESC
-) -> list[Restaurant]:
-    """
-    returns all restaurant records with the specified price level
-    """
-    direction = ORDER2FUNC[order]
-    column = FIELD2COL[sort_by]
-    return db.scalars(
-        select(Restaurant)
-        .where(Restaurant.priceLevel == price_level)
-        .order_by(direction(column).nulls_last())
-    ).all()
 
 
 def get_distinct_types(db: Session) -> list[str]:

@@ -6,10 +6,10 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 
 class PriceLevel(str, Enum):
-    INEXPENSIVE     = "PRICE_LEVEL_INEXPENSIVE"
-    MODERATE        = "PRICE_LEVEL_MODERATE"
-    EXPENSIVE       = "PRICE_LEVEL_EXPENSIVE"
-    VERY_EXPENSIVE  = "PRICE_LEVEL_VERY_EXPENSIVE"
+    INEXPENSIVE     = "INEXPENSIVE"
+    MODERATE        = "MODERATE"
+    EXPENSIVE       = "EXPENSIVE"
+    VERY_EXPENSIVE  = "VERY_EXPENSIVE"
 
 
 class Restaurant(Base):

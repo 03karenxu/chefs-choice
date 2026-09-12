@@ -25,11 +25,11 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-OUTPUT_FILE = DATA_DIR / "places_data.csv"
+OUTPUT_FILE = DATA_DIR / "google_places_data.csv"
 
-FAILED_FILE = DATA_DIR / "failed_points.csv" # all points that reached the API and failed
-PROCESSED_FILE = DATA_DIR / "processed_points.csv" # all points that reached the API
-SKIP_IDS_FILE = DATA_DIR / "processed_seeds.csv" # all seeds that haven't been used yet
+FAILED_FILE = DATA_DIR / "_failed_points.csv" # all points that reached the API and failed
+PROCESSED_FILE = DATA_DIR / "_processed_points.csv" # all points that reached the API
+SKIP_IDS_FILE = DATA_DIR / "_processed_seeds.csv" # all seeds that haven't been used yet
 
 POINTS_FILE_1KM = DATA_DIR / "1km_seeds.csv"
 POINTS_FILE_500M = DATA_DIR / "500m_seeds.csv"
@@ -112,21 +112,24 @@ def flatten_place(place: dict) -> dict:
     price_range = place.get("priceRange")
 
     # format price range str
-    price_range_str = ""
+    price_range_str = None
     if price_range:
         start = price_range.get("startPrice") or {}
         end = price_range.get("endPrice") or {}
         currency = start.get("currencyCode") or end.get("currencyCode") or ""
         start_units = start.get("units", "")
         end_units = end.get("units", "")
-        price_range_str = f"{currency} {start_units}-{end_units}".strip()
+        if end_units:
+            price_range_str = f"{currency} {start_units}-{end_units}".strip()
+        else:
+            price_range_str = f"{currency} {start_units}+".strip()
 
     return {
         "id": place.get("id", ""),
         "displayName": display_name.get("text", ""),
         "formattedAddress": place.get("formattedAddress", ""),
         "primaryType": place.get("primaryType", ""),
-        "priceLevel": place.get("priceLevel", ""),
+        "priceLevel": place.get("priceLevel", "").remove_prefix("PRICE_LEVEL"),
         "priceRange": price_range_str,
         "rating": place.get("rating", ""),
         "lat": location.get("latitude", ""),
