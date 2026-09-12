@@ -1,7 +1,8 @@
+from decimal import Decimal
 from sqlalchemy.orm import Session
 from sqlalchemy import asc, desc, func, select, Row
 from app.models import Restaurant, PriceLevel
-from app.enums import SortField, SortOrder
+from app.enums import SortField, SortOrder, BestValueMethod
 
 FIELD2COL = {
     SortField.RATING:   Restaurant.rating,
@@ -20,8 +21,8 @@ def get_restaurants(
     db: Session,
     sort_by: SortField,
     order: SortOrder,
-    type: str | None                = None,
-    priceLevel: PriceLevel | None   = None
+    type: str | None,
+    priceLevel: PriceLevel | None
 ) -> list[Restaurant]:
     """
     returns all restaurants, with optional type/priceLevel filtering
@@ -64,10 +65,11 @@ def get_distinct_types(db: Session) -> list[str]:
 
 def get_best_value_restaurants(
     db: Session,
-    limit: int = 10
-) -> tuple[list[Restaurant], list[Restaurant]]:
+    method: BestValueMethod,
+    limit: int
+) -> list[Restaurant]:
     """
-    returns the restaurants table in 2 versions
+    returns the restaurants table using 2 options, up to limit
     1. ordered by bayesian average rating
     2. ordered by average rating
     """
@@ -76,33 +78,23 @@ def get_best_value_restaurants(
         Restaurant.userRatingCount.is_not(None)
     )
 
-    # bayesian rating calculation
-    m = db.scalar(
-        select(func.avg(Restaurant.rating))
-        .where(*has_data)
-    )
-    C = db.scalar(
-        select(func.avg(Restaurant.userRatingCount))
-        .where(*has_data)
-    )
-    v = Restaurant.userRatingCount
-    R = Restaurant.rating
-    bayesian_avg = (C * m + v * R) / (v + C)
-
-    results_bayesian = db.scalars(
-        select(Restaurant)
-        .where(*has_data)
-        .order_by(bayesian_avg.desc())
-        .limit(limit)
+    if method == BestValueMethod.BAYESIAN:
+        results = db.scalars(
+            select(Restaurant)
+            .where(*has_data)
+            .order_by(Restaurant.bayesianRating.desc().nulls_last())
+            .limit(limit)
     ).all()
-    results_avg = db.scalars(
-        select(Restaurant)
-        .where(*has_data)
-        .order_by(Restaurant.rating.desc())
-        .limit(limit)
-    ).all()
-
-    return results_bayesian, results_avg
+    elif method == BestValueMethod.RATING:
+        results = db.scalars(
+            select(Restaurant)
+            .where(*has_data)
+            .order_by(Restaurant.rating.desc().nulls_last())
+            .limit(limit)
+        ).all()
+    else:
+        results = []
+    return results
 
 
 def get_type_stats(db: Session) -> list[Row]:
@@ -119,3 +111,22 @@ def get_type_stats(db: Session) -> list[Row]:
         .group_by(Restaurant.type)
         .order_by(func.count(Restaurant.id).desc())
     ).all()
+
+def compute_bayesian_ratings(db: Session) -> None:
+    has_data = (
+        Restaurant.rating.is_not(None),
+        Restaurant.userRatingCount.is_not(None),
+    )
+
+    m = db.scalar(select(func.avg(Restaurant.rating)).where(*has_data))
+    C = db.scalar(select(func.avg(Restaurant.userRatingCount)).where(*has_data))
+
+    if m is None or C is None:
+        return
+    
+    restaurants = db.scalars(select(Restaurant).where(*has_data)).all()
+    for r in restaurants:
+        v, R = r.userRatingCount, r.rating
+        r.bayesianRating = (Decimal(C) * m + v * R) / (v + Decimal(C))
+
+    db.commit()

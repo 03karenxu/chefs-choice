@@ -19,3 +19,4 @@ class Restaurant(Base):
     priceRange: Mapped[str | None]          = mapped_column(String(20))
     rating: Mapped[Decimal | None]          = mapped_column(Numeric(2, 1))
     userRatingCount: Mapped[int | None]     = mapped_column(Integer)
+    bayesianRating: Mapped[Decimal | None]  = mapped_column(Numeric(3, 2))

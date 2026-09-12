@@ -5,6 +5,7 @@ description = "application plotting restaurants by how good/cheap they are"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.20.0",
     "fastapi>=0.141.1",
     "pandas>=3.0.5",
     "psycopg2-binary>=2.9.12",

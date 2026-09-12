@@ -1,6 +1,6 @@
 import pytest
 
-# --- GET /restaurants/ ---------------------------------------------------
+# GET /restaurants/
 
 def test_get_restaurants_with_valid_params(client, seeded_db):
     response = client.get(
@@ -68,7 +68,7 @@ def test_get_restaurants_empty_db_returns_empty_list(client, db_session):
     assert response.json() == []
 
 
-# --- GET /restaurants/types ------------------------------------------------
+# GET /restaurants/types
 
 def test_get_restaurant_types(client, seeded_db):
     response = client.get("/restaurants/types")
@@ -94,7 +94,7 @@ def test_get_restaurant_types_empty_db(client, db_session):
     assert response.json() == {"types": [], "count": 0}
 
 
-# --- GET /restaurants/types/stats ------------------------------------------
+# GET /restaurants/types/stats
 
 def test_get_type_stats_shape(client, seeded_db):
     response = client.get("/restaurants/types/stats")
@@ -132,7 +132,7 @@ def test_get_type_stats_empty_db(client, db_session):
     assert response.json() == []
 
 
-# --- GET /restaurants/{id} --------------------------------------------------
+# GET /restaurants/{id}
 
 def test_get_restaurant_by_id_found(client, seeded_db):
     target = seeded_db[0]  # rest-001
@@ -156,3 +156,16 @@ def test_get_restaurant_by_id_with_null_fields(client, seeded_db):
     assert data["type"] is None
     assert data["priceLevel"] is None
     assert data["rating"] is None
+
+# GET /restaurants/best
+
+def test_get_best_value_by_rating(client, seeded_db):
+    response = client.get("/restaurants/best?method=rating&limit=20")
+
+    assert response.status_code == 200
+
+    data = response.json()
+    ratings = [r["rating"] for r in data]
+
+    assert ratings == sorted(ratings, reverse=True)
+    assert all(r["id"] != "rest-005" for r in data)

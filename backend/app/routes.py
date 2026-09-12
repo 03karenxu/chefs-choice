@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app import services
 from app.db import get_db
-from app.enums import PriceLevel, SortField, SortOrder
+from app.enums import PriceLevel, SortField, SortOrder, BestValueMethod
 from app.schemas import (
     RestaurantResponse,
     RestaurantTypesResponse,
@@ -12,6 +12,7 @@ from app.schemas import (
 )
 
 router = APIRouter(prefix="/restaurants")
+
 
 @router.get("/", response_model=list[RestaurantResponse])
 def get_restaurants(
@@ -38,6 +39,14 @@ def get_restaurant_types(db: Session = Depends(get_db)) -> RestaurantTypesRespon
 @router.get("/types/stats", response_model=list[RestaurantTypeStatResponse])
 def get_type_stats(db: Session = Depends(get_db)) -> list[RestaurantTypeStatResponse]:
     return services.get_type_stats(db=db)
+
+@router.get("/best", response_model=list[RestaurantResponse])
+def get_best_restaurants(
+    method: BestValueMethod = BestValueMethod.BAYESIAN,
+    limit: int = 10,
+    db: Session = Depends(get_db)
+) -> list[RestaurantResponse]:
+    return services.get_best_value_restaurants(db=db, method=method, limit=limit)
 
 @router.get("/{id}", response_model=RestaurantResponse)
 def get_restaurant_by_id(id: str, db: Session = Depends(get_db)) -> RestaurantResponse:

@@ -5,10 +5,15 @@ class SortOrder(str, Enum):
     DESC    = "desc"
 
 class SortField(str, Enum):
-    RATING  = "rating"
-    PRICE   = "price"
-    NAME    = "name"
-    
+    RATING      = "rating"
+    BAYESIAN    = "bayesian"
+    PRICE       = "price"
+    NAME        = "name"
+
+class BestValueMethod(str, Enum):
+    RATING      = "rating"
+    BAYESIAN    = "bayesian"
+
 class PriceLevel(str, Enum):
     INEXPENSIVE     = "INEXPENSIVE"
     MODERATE        = "MODERATE"
