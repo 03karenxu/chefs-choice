@@ -30,28 +30,54 @@ def init_tables():
 
 def load_from_csv(fp: Path | str):
     """
-    copies a csv table into the specified postgres table
+    Copies a CSV table into the restaurants PostgreSQL table,
+    using an explicit column order.
     """
     fp = Path(fp)
 
-    if not fp.exists(): raise FileNotFoundError()
-    
+    if not fp.exists():
+        raise FileNotFoundError(fp)
+
     conn = engine.raw_connection()
     cur = conn.cursor()
 
+    columns = """
+        id,
+        name,
+        address,
+        type,
+        "priceLevel",
+        "priceRange",
+        rating,
+        lat,
+        lng,
+        "userRatingCount"
+    """
+
     try:
-        with open(fp, "r") as f:
-            cur.copy_expert(f"COPY {TABLE_NAME} FROM STDIN WITH CSV HEADER NULL ''", f)
+        with open(fp, "r", encoding="utf-8") as f:
+            cur.copy_expert(
+                f"""
+                COPY {TABLE_NAME} ({columns})
+                FROM STDIN
+                WITH CSV HEADER NULL ''
+                """,
+                f,
+            )
+
         conn.commit()
         logger.info(f"Loaded {fp.name} into table {TABLE_NAME}")
+
     except Exception as e:
-        logger.error(f"Error loading file {fp.name} into table {TABLE_NAME}: {e}")
+        logger.error(
+            f"Error loading file {fp.name} into table {TABLE_NAME}: {e}"
+        )
         conn.rollback()
-        raise e
+        raise
+
     finally:
         cur.close()
         conn.close()
-
 
 if __name__ == "__main__":
     init_tables()

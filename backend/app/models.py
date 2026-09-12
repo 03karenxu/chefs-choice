@@ -5,7 +5,6 @@ from sqlalchemy import Float, String, Numeric, Integer, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 
 
-
 class Restaurant(Base):
     __tablename__ = "restaurants"
 
