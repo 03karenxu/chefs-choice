@@ -12,3 +12,4 @@ logs/
 logs/
 *.log
 *.csv
+backend/scripts/_*.py
